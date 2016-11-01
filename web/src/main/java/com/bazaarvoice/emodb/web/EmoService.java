@@ -42,8 +42,10 @@ import com.bazaarvoice.emodb.web.resources.queue.DedupQueueResource1;
 import com.bazaarvoice.emodb.web.resources.queue.QueueResource1;
 import com.bazaarvoice.emodb.web.resources.report.ReportResource1;
 import com.bazaarvoice.emodb.web.resources.sor.DataStoreResource1;
+import com.bazaarvoice.emodb.web.resources.system.SystemResource1;
 import com.bazaarvoice.emodb.web.scanner.ScanUploader;
 import com.bazaarvoice.emodb.web.scanner.resource.ScanUploadResource1;
+import com.bazaarvoice.emodb.web.system.SystemSource;
 import com.bazaarvoice.emodb.web.throttling.AdHocConcurrentRequestRegulatorSupplier;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottleManager;
 import com.bazaarvoice.emodb.web.throttling.BlackListIpValueStore;
@@ -95,6 +97,7 @@ import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Asp
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.scanner;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.swagger;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.throttle;
+import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.system;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.web;
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -192,6 +195,7 @@ public class EmoService extends Application<EmoConfiguration> {
         evaluateBlackList();
         evaluateReporting();
         evaluateThrottling();
+        evaluateSystem();
         evaluateScanner();
         evaluateServiceStartedListeners();
         evaluateSwagger();
@@ -347,6 +351,17 @@ public class EmoService extends Application<EmoConfiguration> {
         _environment.jersey().getResourceConfig().getContainerResponseFilters().add(adHocThrottleFilter);
         // Add API Key authentication and authorization
         authConfigurator.configure(_environment);
+    }
+
+    private void evaluateSystem()
+            throws Exception {
+        if (!runPerServiceMode(system)) {
+            return;
+        }
+
+        // Add the system endpoint.
+        _environment.jersey().register(new SystemResource1(_injector.getInstance(SystemSource.class)));
+
     }
 
     private void evaluateServiceStartedListeners() throws Exception {

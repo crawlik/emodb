@@ -48,6 +48,7 @@ public enum EmoServiceMode {
             Aspect.blackList,
             Aspect.throttle,
             Aspect.report,
+            Aspect.system,
             Aspect.job,
             Aspect.security,
             Aspect.full_consistency,
@@ -66,6 +67,7 @@ public enum EmoServiceMode {
             Aspect.blobStore_module,
             Aspect.blackList,
             Aspect.throttle,
+            Aspect.system,
             Aspect.security,
             Aspect.leader_control, // needed for HintsPollerManager
             Aspect.blob_zookeeper_full_consistency,
@@ -93,6 +95,7 @@ public enum EmoServiceMode {
             Aspect.blobStore_module, // needed for permission resolver
             Aspect.scanner,
             Aspect.security,
+            Aspect.system,
             Aspect.full_consistency
     );
 
@@ -150,6 +153,7 @@ public enum EmoServiceMode {
         blackList,
         throttle,
         report,
+        system,
         job,
         full_consistency, // This wires in the fct global zookeeper location
         security,
