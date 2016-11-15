@@ -33,7 +33,7 @@ public class SystemModule extends PrivateModule {
     MapStore<Long> provideStashRunTimeValues(@CurrentDataCenter String currentDataCenter, @GlobalFullConsistencyZooKeeper CuratorFramework curator,
                                              LifeCycleRegistry lifeCycle)
             throws Exception {
-        String zkPath = ZKPaths.makePath("/stash/running-instance-start-timestamp", currentDataCenter);
+        String zkPath = ZKPaths.makePath("/stash-running-instance/start-timestamp", currentDataCenter);
         ZkMapStore<Long> holder = new ZkMapStore<>(curator, zkPath, new ZkTimestampSerializer());
         return lifeCycle.manage(holder);
     }

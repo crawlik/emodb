@@ -24,6 +24,9 @@ public class DefaultSystemSource implements SystemSource {
 
     @Override
     public void updateStashTime(String id, long timestamp) {
+        checkNotNull(id, "id");
+        checkNotNull(timestamp, "timestamp");
+
         try {
             _stashStartTimestamp.set(id, timestamp);
         } catch (Exception e) {
@@ -34,6 +37,8 @@ public class DefaultSystemSource implements SystemSource {
 
     @Override
     public void deleteStashTime(String id) {
+        checkNotNull(id, "id");
+
         try {
             _stashStartTimestamp.remove(id);
         } catch (Exception e) {
@@ -44,6 +49,8 @@ public class DefaultSystemSource implements SystemSource {
 
     @Override
     public Long getStashTime(String id) {
+        checkNotNull(id, "id");
+
         return _stashStartTimestamp.get(id);
     }
 
