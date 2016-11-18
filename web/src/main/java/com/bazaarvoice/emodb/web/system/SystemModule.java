@@ -8,6 +8,7 @@ import com.bazaarvoice.emodb.datacenter.DataCenterConfiguration;
 import com.bazaarvoice.emodb.table.db.astyanax.CurrentDataCenter;
 import com.bazaarvoice.emodb.table.db.consistency.GlobalFullConsistencyZooKeeper;
 import com.bazaarvoice.emodb.table.db.consistency.StashRunTimeValues;
+import com.codahale.metrics.MetricRegistry;
 import com.google.inject.PrivateModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
@@ -15,6 +16,11 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.utils.ZKPaths;
 
 public class SystemModule extends PrivateModule {
+    private MetricRegistry _metricRegistry;
+
+    public SystemModule(MetricRegistry metricRegistry) {
+        _metricRegistry = metricRegistry;
+    }
 
     @Override
     protected void configure() {

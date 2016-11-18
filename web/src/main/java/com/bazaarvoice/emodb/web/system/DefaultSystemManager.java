@@ -9,13 +9,22 @@ import com.bazaarvoice.ostrich.discovery.FixedHostDiscovery;
 import com.bazaarvoice.ostrich.pool.ServiceCachingPolicyBuilder;
 import com.bazaarvoice.ostrich.pool.ServicePoolBuilder;
 import com.bazaarvoice.ostrich.retry.ExponentialBackoffRetry;
+import com.codahale.metrics.MetricRegistry;
+import com.google.inject.Inject;
 import com.sun.jersey.api.client.Client;
 
 import java.util.concurrent.TimeUnit;
 
 public class DefaultSystemManager {
 
-    public static SystemSource newSystemSource(DataCenter dataCenter) {
+    private final MetricRegistry _metrics;
+
+    @Inject
+    public DefaultSystemManager(MetricRegistry metrics) {
+        _metrics = metrics;
+    }
+
+    public SystemSource newSystemSource(DataCenter dataCenter) {
 
         // TODO: is the default client good enough? Don't know....
         Client _jerseyClient = Client.create();
@@ -35,7 +44,7 @@ public class DefaultSystemManager {
                 .withServiceFactory(clientFactory)
                 .withCachingPolicy(ServiceCachingPolicyBuilder.getMultiThreadedClientPolicy())
                         // .withHealthCheckExecutor(_healthCheckExecutor)
-                        // .withMetricRegistry(_metrics)
+                .withMetricRegistry(_metrics)
                 .buildProxy(new ExponentialBackoffRetry(30, 1, 10, TimeUnit.SECONDS));
     }
 }

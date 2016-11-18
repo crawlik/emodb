@@ -1,5 +1,6 @@
 package com.bazaarvoice.emodb.web.scanner;
 
+import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.plugin.stash.StashStateListener;
 import com.bazaarvoice.emodb.sor.core.DataTools;
 import com.bazaarvoice.emodb.sor.db.ScanRange;
@@ -9,6 +10,9 @@ import com.bazaarvoice.emodb.web.scanner.control.ScanWorkflow;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanRangeStatus;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanStatus;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanStatusDAO;
+import com.bazaarvoice.emodb.web.system.DefaultSystemManager;
+import com.bazaarvoice.emodb.web.system.SystemSource;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
@@ -40,14 +44,16 @@ public class ScanUploader {
     private final ScanWorkflow _scanWorkflow;
     private final ScanStatusDAO _scanStatusDAO;
     private final StashStateListener _stashStateListener;
+    private final SystemSource _systemSource;
 
     @Inject
     public ScanUploader(DataTools dataTools, ScanWorkflow scanWorkflow, ScanStatusDAO scanStatusDAO,
-                        StashStateListener stashStateListener) {
+                        StashStateListener stashStateListener, DataCenters dataCenters, MetricRegistry metricRegistry) {
         _dataTools = checkNotNull(dataTools, "dataTools");
         _scanWorkflow = checkNotNull(scanWorkflow, "scanWorkflow");
         _scanStatusDAO = checkNotNull(scanStatusDAO, "scanStatusDAO");
         _stashStateListener = checkNotNull(stashStateListener, "stashStateListener");
+        _systemSource = checkNotNull(new DefaultSystemManager(metricRegistry).newSystemSource(dataCenters.getSelf()), "systemResource");
     }
 
     public ScanStatus scanAndUpload(String scanId, ScanOptions options) {
@@ -98,6 +104,9 @@ public class ScanUploader {
     private void startScanUpload(String scanId, ScanStatus status) {
         boolean scanCreated = false;
 
+        // Update the scan start time in Zookeeper.
+        _systemSource.updateStashTime(scanId, System.currentTimeMillis());
+
         try {
             // Create the scan
             _scanStatusDAO.updateScanStatus(status);
@@ -111,6 +120,9 @@ public class ScanUploader {
         } catch (Exception e) {
             _log.error("Failed to start scan and upload for scan {}", scanId, e);
 
+            // Delete the entry of the scan start time in Zookeeper.
+            _systemSource.deleteStashTime(scanId);
+
             if (scanCreated) {
                 // The scan was not properly started; cancel the scan
                 try {
@@ -123,6 +135,9 @@ public class ScanUploader {
 
             throw Throwables.propagate(e);
         }
+
+        // Delete the entry of the scan start time in Zookeeper.
+        _systemSource.deleteStashTime(scanId);
     }
 
     /**
@@ -159,5 +174,7 @@ public class ScanUploader {
         // Notify the workflow the scan status was updated
         _scanWorkflow.scanStatusUpdated(id);
 
+        // Delete the entry of the scan start time in Zookeeper.
+        _systemSource.deleteStashTime(id);
     }
 }

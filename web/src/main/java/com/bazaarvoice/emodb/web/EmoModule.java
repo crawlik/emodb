@@ -528,7 +528,7 @@ public class EmoModule extends AbstractModule {
 
     private class SystemSetup extends AbstractModule  {
         @Override
-        protected void configure() { install(new SystemModule()); }
+        protected void configure() { install(new SystemModule(_environment.metrics())); }
     }
 
     private class JobSetup extends AbstractModule  {
