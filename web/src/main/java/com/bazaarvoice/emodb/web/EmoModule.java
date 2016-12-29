@@ -97,7 +97,7 @@ import com.bazaarvoice.emodb.web.settings.Setting;
 import com.bazaarvoice.emodb.web.settings.SettingsModule;
 import com.bazaarvoice.emodb.web.settings.SettingsRegistry;
 import com.bazaarvoice.emodb.web.settings.SorCqlDriverTask;
-import com.bazaarvoice.emodb.web.system.SystemModule;
+import com.bazaarvoice.emodb.web.compactioncontrol.CompactionControlModule;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottle;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottleControlTask;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottleManager;
@@ -157,7 +157,7 @@ import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Asp
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.leader_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.queue_module;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.report;
-import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.system;
+import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.compaction_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.scanner;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.security;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.throttle;
@@ -195,7 +195,7 @@ public class EmoModule extends AbstractModule {
         evaluate(blackList, new BlacklistSetup());
         evaluate(scanner, new ScannerSetup());
         evaluate(report, new ReportSetup());
-        evaluate(system, new SystemSetup());
+        evaluate(compaction_control, new CompactionControlSetup());
         evaluate(job, new JobSetup());
         evaluate(security, new SecuritySetup());
         evaluate(full_consistency, new FullConsistencySetup());
@@ -526,9 +526,9 @@ public class EmoModule extends AbstractModule {
         }
     }
 
-    private class SystemSetup extends AbstractModule  {
+    private class CompactionControlSetup extends AbstractModule  {
         @Override
-        protected void configure() { install(new SystemModule(_environment.metrics())); }
+        protected void configure() { install(new CompactionControlModule()); }
     }
 
     private class JobSetup extends AbstractModule  {

@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.system;
+package com.bazaarvoice.emodb.web.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.dropwizard.discovery.PayloadBuilder;
 import com.bazaarvoice.emodb.datacenter.api.DataCenter;
@@ -15,31 +15,35 @@ import com.sun.jersey.api.client.Client;
 
 import java.util.concurrent.TimeUnit;
 
-public class DefaultSystemManager {
+public class DefaultCompactionControlManager {
 
     private final MetricRegistry _metrics;
 
+    private final Client _jerseyClient;
+
+    private final String _compControlApiKey;
+
     @Inject
-    public DefaultSystemManager(MetricRegistry metrics) {
+    public DefaultCompactionControlManager(MetricRegistry metrics, Client jerseyClient, @CompControlApiKey String compControlApiKey) {
         _metrics = metrics;
+        _jerseyClient = jerseyClient;
+        _compControlApiKey = compControlApiKey;
     }
 
-    public SystemSource newSystemSource(DataCenter dataCenter) {
+    public CompactionControlSource newCompactionControlSource(DataCenter dataCenter) {
 
-        // TODO: is the default client good enough? Don't know....
-        Client _jerseyClient = Client.create();
-        MultiThreadedServiceFactory<SystemSource> clientFactory = new SystemClientFactory(_jerseyClient);
+        MultiThreadedServiceFactory<CompactionControlSource> clientFactory = new CompactionControlClientFactory(_jerseyClient, _compControlApiKey);
 
         ServiceEndPoint endPoint = new ServiceEndPointBuilder()
                 .withServiceName(clientFactory.getServiceName())
                 .withId(dataCenter.getName())
                 .withPayload(new PayloadBuilder()
-                        .withUrl(dataCenter.getServiceUri().resolve(SystemClient.SERVICE_PATH))
+                        .withUrl(dataCenter.getServiceUri().resolve(CompactionControlClient.SERVICE_PATH))
                         .withAdminUrl(dataCenter.getAdminUri())
                         .toString())
                 .build();
 
-        return ServicePoolBuilder.create(SystemSource.class)
+        return ServicePoolBuilder.create(CompactionControlSource.class)
                 .withHostDiscovery(new FixedHostDiscovery(endPoint))
                 .withServiceFactory(clientFactory)
                 .withCachingPolicy(ServiceCachingPolicyBuilder.getMultiThreadedClientPolicy())

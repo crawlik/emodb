@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.system;
+package com.bazaarvoice.emodb.web.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.dropwizard.discovery.Payload;
 import com.bazaarvoice.ostrich.MultiThreadedServiceFactory;
@@ -16,17 +16,17 @@ import com.sun.jersey.api.client.UniformInterfaceException;
 import java.net.URI;
 
 /**
- * SOA factory for Jersey clients to use System resources.
+ * SOA factory for Jersey clients to use Compaction control resources.
  */
-public class SystemClientFactory implements MultiThreadedServiceFactory<SystemSource> {
+public class CompactionControlClientFactory implements MultiThreadedServiceFactory<CompactionControlSource> {
     private final Client _jerseyClient;
     private final String _apiKey;
 
-    public SystemClientFactory(Client jerseyClient) {
+    public CompactionControlClientFactory(Client jerseyClient) {
         this(jerseyClient, null);
     }
 
-    public SystemClientFactory(Client jerseyClient, String apiKey) {
+    public CompactionControlClientFactory(Client jerseyClient, String apiKey) {
         _jerseyClient = jerseyClient;
         _apiKey = apiKey;
     }
@@ -35,31 +35,31 @@ public class SystemClientFactory implements MultiThreadedServiceFactory<SystemSo
      * Creates a view of this instance using the given API Key and sharing the same underlying resources.
      * Note that this method may return a new instance so the caller must use the returned value.
      */
-    public SystemClientFactory usingApiKey(String apiKey) {
+    public CompactionControlClientFactory usingApiKey(String apiKey) {
         if (Objects.equal(_apiKey, apiKey)) {
             return this;
         }
-        return new SystemClientFactory(_jerseyClient, apiKey);
+        return new CompactionControlClientFactory(_jerseyClient, apiKey);
     }
 
     @Override
     public String getServiceName() {
-        return "emodb-system-1";
+        return "emodb-compaction-control-1";
     }
 
     @Override
-    public void configure(ServicePoolBuilder<SystemSource> servicePoolBuilder) {
+    public void configure(ServicePoolBuilder<CompactionControlSource> servicePoolBuilder) {
         // Nothing to do
     }
 
     @Override
-    public SystemSource create(ServiceEndPoint endPoint) {
+    public CompactionControlSource create(ServiceEndPoint endPoint) {
         Payload payload = Payload.valueOf(endPoint.getPayload());
-        return new SystemClient(payload.getServiceUrl(), _jerseyClient, _apiKey);
+        return new CompactionControlClient(payload.getServiceUrl(), _jerseyClient, _apiKey);
     }
 
     @Override
-    public void destroy(ServiceEndPoint endPoint, SystemSource service) {
+    public void destroy(ServiceEndPoint endPoint, CompactionControlSource service) {
         // Nothing to do
     }
 

@@ -1,39 +1,42 @@
 package com.bazaarvoice.emodb.web.scanner;
 
+import com.bazaarvoice.emodb.datacenter.api.DataCenter;
 import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.plugin.stash.StashStateListener;
 import com.bazaarvoice.emodb.sor.core.DataTools;
 import com.bazaarvoice.emodb.sor.db.ScanRange;
 import com.bazaarvoice.emodb.sor.db.ScanRangeSplits;
+import com.bazaarvoice.emodb.web.compactioncontrol.CompactionControlSource;
+import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.control.ScanPlan;
 import com.bazaarvoice.emodb.web.scanner.control.ScanWorkflow;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanRangeStatus;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanStatus;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanStatusDAO;
-import com.bazaarvoice.emodb.web.system.DefaultSystemManager;
-import com.bazaarvoice.emodb.web.system.SystemSource;
-import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Entry point for uploading JSON representations of a placement to a file system, such as S3.
  * The actual uploading takes place asynchronously the following classes:
- *
+ * <p/>
  * <ul>
- *     <li>
- *         {@link com.bazaarvoice.emodb.web.scanner.control.ScanUploadMonitor}: monitors all active uploads and schedules
- *         new token ranges for uploading as they become available.</li>
- *     </li>
- *     <li>
- *         {@link com.bazaarvoice.emodb.web.scanner.control.DistributedScanRangeMonitor}: listens for token ranges
- *         available for scanning and scans and uploads them locally.
- *     </li>
+ * <li>
+ * {@link com.bazaarvoice.emodb.web.scanner.control.ScanUploadMonitor}: monitors all active uploads and schedules
+ * new token ranges for uploading as they become available.</li>
+ * </li>
+ * <li>
+ * {@link com.bazaarvoice.emodb.web.scanner.control.DistributedScanRangeMonitor}: listens for token ranges
+ * available for scanning and scans and uploads them locally.
+ * </li>
  * </ul>
  */
 public class ScanUploader {
@@ -44,16 +47,18 @@ public class ScanUploader {
     private final ScanWorkflow _scanWorkflow;
     private final ScanStatusDAO _scanStatusDAO;
     private final StashStateListener _stashStateListener;
-    private final SystemSource _systemSource;
+    private final DefaultCompactionControlManager _defaultCompactionControlManager;
+    private final DataCenters _dataCenters;
 
     @Inject
     public ScanUploader(DataTools dataTools, ScanWorkflow scanWorkflow, ScanStatusDAO scanStatusDAO,
-                        StashStateListener stashStateListener, DataCenters dataCenters, MetricRegistry metricRegistry) {
+                        StashStateListener stashStateListener, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters) {
         _dataTools = checkNotNull(dataTools, "dataTools");
         _scanWorkflow = checkNotNull(scanWorkflow, "scanWorkflow");
         _scanStatusDAO = checkNotNull(scanStatusDAO, "scanStatusDAO");
         _stashStateListener = checkNotNull(stashStateListener, "stashStateListener");
-        _systemSource = checkNotNull(new DefaultSystemManager(metricRegistry).newSystemSource(dataCenters.getSelf()), "systemResource");
+        _defaultCompactionControlManager = checkNotNull(defaultCompactionControlManager, "defaultCompactionControlManager");
+        _dataCenters = checkNotNull(dataCenters, "dataCenters");
     }
 
     public ScanStatus scanAndUpload(String scanId, ScanOptions options) {
@@ -65,7 +70,7 @@ public class ScanUploader {
         ScanStatus status = plan.toScanStatus();
 
         if (!dryRun) {
-            startScanUpload(scanId, status);
+            startScanUpload(scanId, status, options.getPlacements());
         }
 
         return status;
@@ -101,11 +106,24 @@ public class ScanUploader {
         return plan;
     }
 
-    private void startScanUpload(String scanId, ScanStatus status) {
+    private void startScanUpload(String scanId, ScanStatus status, Set<String> placements) {
         boolean scanCreated = false;
 
-        // Update the scan start time in Zookeeper.
-        _systemSource.updateStashTime(scanId, System.currentTimeMillis());
+        try {
+            // Update the scan start time in Zookeeper in all data centers.
+            DataCenter self = _dataCenters.getSelf();
+            for (DataCenter dataCenter : _dataCenters.getAll()) {
+                if (dataCenter.equals(self)) {
+                    CompactionControlSource localCompactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
+                    localCompactionControlSource.updateStashTime(scanId, System.currentTimeMillis(), Lists.newArrayList(placements), Boolean.FALSE);
+                }
+                CompactionControlSource remoteCompactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
+                remoteCompactionControlSource.updateStashTime(scanId, System.currentTimeMillis(), Lists.newArrayList(placements), Boolean.TRUE);
+            }
+        } catch (Exception e) {
+            _log.error("Failed to update the stash time for scan {}", scanId, e);
+            throw Throwables.propagate(e);
+        }
 
         try {
             // Create the scan
@@ -121,7 +139,10 @@ public class ScanUploader {
             _log.error("Failed to start scan and upload for scan {}", scanId, e);
 
             // Delete the entry of the scan start time in Zookeeper.
-            _systemSource.deleteStashTime(scanId);
+            for (DataCenter dataCenter : _dataCenters.getAll()) {
+                CompactionControlSource compactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
+                compactionControlSource.deleteStashTime(scanId);
+            }
 
             if (scanCreated) {
                 // The scan was not properly started; cancel the scan
@@ -135,9 +156,6 @@ public class ScanUploader {
 
             throw Throwables.propagate(e);
         }
-
-        // Delete the entry of the scan start time in Zookeeper.
-        _systemSource.deleteStashTime(scanId);
     }
 
     /**
@@ -174,7 +192,14 @@ public class ScanUploader {
         // Notify the workflow the scan status was updated
         _scanWorkflow.scanStatusUpdated(id);
 
-        // Delete the entry of the scan start time in Zookeeper.
-        _systemSource.deleteStashTime(id);
+        try {
+            // Delete the entry of the scan start time in Zookeeper.
+            for (DataCenter dataCenter : _dataCenters.getAll()) {
+                CompactionControlSource compactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
+                compactionControlSource.deleteStashTime(id);
+            }
+        } catch (Exception e) {
+            _log.error("Failed to delete the stash time for scan {}", id, e);
+        }
     }
 }
