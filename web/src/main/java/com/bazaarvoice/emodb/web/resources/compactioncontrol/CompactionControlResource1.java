@@ -1,7 +1,7 @@
 package com.bazaarvoice.emodb.web.resources.compactioncontrol;
 
-import com.bazaarvoice.emodb.web.compactioncontrol.CompactionControlSource;
-import com.bazaarvoice.emodb.web.compactioncontrol.StashRunTimeInfo;
+import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlSource;
+import com.bazaarvoice.emodb.sor.compactioncontrol.StashRunTimeInfo;
 import com.bazaarvoice.emodb.web.resources.SuccessResponse;
 import io.dropwizard.jersey.params.BooleanParam;
 import io.dropwizard.jersey.params.LongParam;

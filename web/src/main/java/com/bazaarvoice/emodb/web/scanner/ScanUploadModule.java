@@ -29,7 +29,7 @@ import com.bazaarvoice.emodb.sor.DataStoreConfiguration;
 import com.bazaarvoice.emodb.sor.api.DataStore;
 import com.bazaarvoice.emodb.web.EmoConfiguration;
 import com.bazaarvoice.emodb.web.auth.ApiKeyEncryption;
-import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.config.ScannerConfiguration;
 import com.bazaarvoice.emodb.web.scanner.config.ScheduledScanConfiguration;
 import com.bazaarvoice.emodb.web.scanner.control.DistributedScanRangeMonitor;

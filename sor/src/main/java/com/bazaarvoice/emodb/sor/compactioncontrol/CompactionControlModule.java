@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.compactioncontrol;
+package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.dropwizard.lifecycle.LifeCycleRegistry;
 import com.bazaarvoice.emodb.common.zookeeper.store.MapStore;
@@ -18,6 +18,7 @@ import org.apache.curator.utils.ZKPaths;
  * Exports the following:
  * <ul>
  * <li> {@link CompactionControlSource}
+ * <li> {@link DefaultCompactionControlManager}
  * </ul>
  */
 public class CompactionControlModule extends PrivateModule {
@@ -28,7 +29,7 @@ public class CompactionControlModule extends PrivateModule {
         expose(CompactionControlSource.class);
 
         bind(DefaultCompactionControlManager.class).asEagerSingleton();
-        bind(StashRunTimeMonitorManager.class).asEagerSingleton();
+        expose(DefaultCompactionControlManager.class);
     }
 
     @Provides

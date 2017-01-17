@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.compactioncontrol;
+package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.zookeeper.store.MapStore;
 import com.bazaarvoice.emodb.table.db.astyanax.CurrentDataCenter;

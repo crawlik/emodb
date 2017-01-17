@@ -8,6 +8,8 @@ import com.bazaarvoice.emodb.common.dropwizard.lifecycle.ManagedGuavaService;
 import com.bazaarvoice.emodb.common.dropwizard.lifecycle.ServiceFailureListener;
 import com.bazaarvoice.emodb.databus.DatabusZooKeeper;
 import com.bazaarvoice.emodb.datacenter.api.DataCenters;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.compactioncontrol.StashRunTimeMonitor;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Supplier;
 import com.google.common.net.HostAndPort;

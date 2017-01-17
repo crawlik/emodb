@@ -29,8 +29,8 @@ import com.bazaarvoice.emodb.sor.db.ScanRangeSplits;
 import com.bazaarvoice.emodb.table.db.Table;
 import com.bazaarvoice.emodb.table.db.TableSet;
 import com.bazaarvoice.emodb.table.db.astyanax.AstyanaxStorage;
-import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
-import com.bazaarvoice.emodb.web.compactioncontrol.InMemoryCompactionControlSource;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.compactioncontrol.InMemoryCompactionControlSource;
 import com.bazaarvoice.emodb.web.scanner.control.DistributedScanRangeMonitor;
 import com.bazaarvoice.emodb.web.scanner.control.InMemoryScanWorkflow;
 import com.bazaarvoice.emodb.web.scanner.control.LocalScanUploadMonitor;
@@ -360,7 +360,7 @@ public class ScanUploaderTest {
 
         // Scan and upload the range
         LocalRangeScanUploader uploader = new LocalRangeScanUploader(
-                dataTools, scanWriterGenerator, mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.standardMinutes(1),
+                dataTools, scanWriterGenerator, defaultCompactionControlManager, dataCenters, mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.standardMinutes(1),
                 Duration.standardMinutes(5));
         uploader.start();
         try {
@@ -913,8 +913,12 @@ public class ScanUploaderTest {
 
         TableSet tableSet = mock(TableSet.class);
 
+        InMemoryCompactionControlSource inMemoryCompactionControlSource = new InMemoryCompactionControlSource();
+        DefaultCompactionControlManager defaultCompactionControlManager = mock(DefaultCompactionControlManager.class);
+        when(defaultCompactionControlManager.newCompactionControlSource(any())).thenReturn(inMemoryCompactionControlSource);
+
         LocalRangeScanUploader uploader = new LocalRangeScanUploader(
-                dataTools, scanWriterGenerator, mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.standardMinutes(1),
+                dataTools, scanWriterGenerator, defaultCompactionControlManager, mock(DataCenters.class), mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.standardMinutes(1),
                 Duration.standardMinutes(5));
 
         ScanOptions options = new ScanOptions("p0")
@@ -1112,7 +1116,11 @@ public class ScanUploaderTest {
 
             TableSet tableSet = mock(TableSet.class);
 
-            scanUploader = new LocalRangeScanUploader(dataTools, scanWriterGenerator, mock(LifeCycleRegistry.class), metricRegistry);
+            InMemoryCompactionControlSource inMemoryCompactionControlSource = new InMemoryCompactionControlSource();
+            DefaultCompactionControlManager defaultCompactionControlManager = mock(DefaultCompactionControlManager.class);
+            when(defaultCompactionControlManager.newCompactionControlSource(any())).thenReturn(inMemoryCompactionControlSource);
+
+            scanUploader = new LocalRangeScanUploader(dataTools, scanWriterGenerator, defaultCompactionControlManager, mock(DataCenters.class), mock(LifeCycleRegistry.class), metricRegistry);
             scanUploader.start();
 
             ScanOptions scanOptions = new ScanOptions("p0")
@@ -1190,8 +1198,12 @@ public class ScanUploaderTest {
         ScanOptions options = new ScanOptions(ImmutableList.of("p0"))
                 .addDestination(ScanDestination.to(URI.create("s3://bucket/test")));
 
+        InMemoryCompactionControlSource inMemoryCompactionControlSource = new InMemoryCompactionControlSource();
+        DefaultCompactionControlManager defaultCompactionControlManager = mock(DefaultCompactionControlManager.class);
+        when(defaultCompactionControlManager.newCompactionControlSource(any())).thenReturn(inMemoryCompactionControlSource);
+
         LocalRangeScanUploader uploader = new LocalRangeScanUploader(
-                dataTools, scanWriterGenerator, mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.millis(100),
+                dataTools, scanWriterGenerator, defaultCompactionControlManager, mock(DataCenters.class), mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.millis(100),
                 Duration.standardSeconds(1));
         uploader.start();
 
@@ -1275,8 +1287,12 @@ public class ScanUploaderTest {
         ScanOptions options = new ScanOptions(ImmutableList.of("p0"))
                 .addDestination(ScanDestination.to(URI.create("s3://bucket/test")));
 
+        InMemoryCompactionControlSource inMemoryCompactionControlSource = new InMemoryCompactionControlSource();
+        DefaultCompactionControlManager defaultCompactionControlManager = mock(DefaultCompactionControlManager.class);
+        when(defaultCompactionControlManager.newCompactionControlSource(any())).thenReturn(inMemoryCompactionControlSource);
+
         LocalRangeScanUploader uploader = new LocalRangeScanUploader(
-                dataTools, scanWriterGenerator, mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.millis(100),
+                dataTools, scanWriterGenerator, defaultCompactionControlManager, mock(DataCenters.class), mock(LifeCycleRegistry.class), metricRegistry, 2, 1000, Duration.millis(100),
                 Duration.millis(100));
         uploader.start();
 

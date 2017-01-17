@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.compactioncontrol;
+package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.auth.apikey.ApiKeyRequest;
 import com.sun.jersey.api.client.Client;

@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.compactioncontrol;
+package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.dropwizard.discovery.PayloadBuilder;
 import com.bazaarvoice.emodb.datacenter.api.DataCenter;

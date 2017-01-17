@@ -3,8 +3,11 @@ package com.bazaarvoice.emodb.web.scanner.rangescan;
 import com.bazaarvoice.emodb.common.api.impl.LimitCounter;
 import com.bazaarvoice.emodb.common.dropwizard.lifecycle.LifeCycleRegistry;
 import com.bazaarvoice.emodb.common.dropwizard.metrics.MetricCounterOutputStream;
+import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.sor.api.Intrinsic;
 import com.bazaarvoice.emodb.sor.api.ReadConsistency;
+import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlUtils;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.sor.core.DataTools;
 import com.bazaarvoice.emodb.sor.db.MultiTableScanOptions;
 import com.bazaarvoice.emodb.sor.db.MultiTableScanResult;
@@ -104,14 +107,18 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
     private ScheduledExecutorService _timeoutService;
     private volatile boolean _shutdown = true;
 
+    private final DefaultCompactionControlManager _defaultCompactionControlManager;
+    private final DataCenters _dataCenters;
+
     @Inject
-    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, LifeCycleRegistry lifecycle, MetricRegistry metricRegistry) {
-        this(dataTools, scanWriterGenerator, lifecycle, metricRegistry, PIPELINE_THREAD_COUNT, PIPELINE_BATCH_SIZE,
+    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters,
+                                  LifeCycleRegistry lifecycle, MetricRegistry metricRegistry) {
+        this(dataTools, scanWriterGenerator, defaultCompactionControlManager, dataCenters, lifecycle, metricRegistry, PIPELINE_THREAD_COUNT, PIPELINE_BATCH_SIZE,
                 WAIT_FOR_ALL_TRANSFERS_COMPLETE_CHECK_INTERVAL, WAIT_FOR_ALL_TRANSFERS_COMPLETE_TIMEOUT);
     }
 
     @VisibleForTesting
-    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, LifeCycleRegistry lifecycle,
+    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters, LifeCycleRegistry lifecycle,
                                   final MetricRegistry metricRegistry, int threadCount, int batchSize, Duration waitForAllTransfersCompleteCheckInterval,
                                   Duration waitForAllTransfersCompleteTimeout) {
         _dataTools = dataTools;
@@ -120,6 +127,9 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
         _batchSize = batchSize;
         _waitForAllTransfersCompleteCheckInterval = waitForAllTransfersCompleteCheckInterval;
         _waitForAllTransfersCompleteTimeout = waitForAllTransfersCompleteTimeout;
+
+        _defaultCompactionControlManager = defaultCompactionControlManager;
+        _dataCenters = dataCenters;
 
         // Initialize the ObjectMapper
         _mapper = new ObjectMapper();
@@ -243,7 +253,8 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
             int partCountForFirstShard = 1;
             Batch batch = new Batch(context, partCountForFirstShard);
 
-            Iterator<MultiTableScanResult> allResults = _dataTools.multiTableScan(multiTableScanOptions, tableSet, LimitCounter.max(), ReadConsistency.STRONG, null);
+            DateTime cutoffTime = CompactionControlUtils.getOldestStashStartTime(_defaultCompactionControlManager, _dataCenters);
+            Iterator<MultiTableScanResult> allResults = _dataTools.multiTableScan(multiTableScanOptions, tableSet, LimitCounter.max(), ReadConsistency.STRONG, cutoffTime);
 
             // Enforce a maximum number of results based on the scan options
             Iterator<MultiTableScanResult> results = Iterators.limit(allResults, getResplitRowCount(options));

@@ -9,7 +9,7 @@ import com.bazaarvoice.emodb.common.dropwizard.lifecycle.ServiceFailureListener;
 import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.plugin.stash.StashStateListener;
 import com.bazaarvoice.emodb.sor.core.DataTools;
-import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.ScannerZooKeeper;
 import com.bazaarvoice.emodb.web.scanner.notifications.ScanCountListener;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanStatusDAO;

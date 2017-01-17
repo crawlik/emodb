@@ -2,6 +2,7 @@ package com.bazaarvoice.emodb.sor.db.astyanax;
 
 import com.bazaarvoice.emodb.common.api.Ttls;
 import com.bazaarvoice.emodb.common.cassandra.CassandraKeyspace;
+import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.sor.api.Audit;
 import com.bazaarvoice.emodb.sor.api.AuditBuilder;
 import com.bazaarvoice.emodb.sor.api.AuditSizeLimitException;
@@ -10,6 +11,8 @@ import com.bazaarvoice.emodb.sor.api.DeltaSizeLimitException;
 import com.bazaarvoice.emodb.sor.api.History;
 import com.bazaarvoice.emodb.sor.api.ReadConsistency;
 import com.bazaarvoice.emodb.sor.api.WriteConsistency;
+import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlUtils;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.sor.core.AuditBatchPersister;
 import com.bazaarvoice.emodb.sor.core.AuditStore;
 import com.bazaarvoice.emodb.sor.db.DataWriterDAO;
@@ -50,6 +53,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.joda.time.DateTime;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -88,10 +92,15 @@ public class AstyanaxDataWriterDAO implements DataWriterDAO, DataPurgeDAO {
     private final HintsConsistencyTimeProvider _rawConsistencyTimeProvider;
     private final AuditStore _auditStore;
 
+    private final DefaultCompactionControlManager _defaultCompactionControlManager;
+    private final DataCenters _dataCenters;
+
     @Inject
     public AstyanaxDataWriterDAO(AstyanaxDataReaderDAO readerDao,
                                  FullConsistencyTimeProvider fullConsistencyTimeProvider, AuditStore auditStore,
                                  HintsConsistencyTimeProvider rawConsistencyTimeProvider,
+                                 DefaultCompactionControlManager defaultCompactionControlManager,
+                                 DataCenters dataCenters,
                                  MetricRegistry metricRegistry) {
         _readerDao = checkNotNull(readerDao, "readerDao");
         _fullConsistencyTimeProvider = checkNotNull(fullConsistencyTimeProvider, "fullConsistencyTimeProvider");
@@ -100,6 +109,8 @@ public class AstyanaxDataWriterDAO implements DataWriterDAO, DataPurgeDAO {
         _changeEncoder = new DefaultChangeEncoder();
         _updateMeter = metricRegistry.meter(getMetricName("updates"));
         _oversizeUpdateMeter = metricRegistry.meter(getMetricName("oversizeUpdates"));
+        _defaultCompactionControlManager = defaultCompactionControlManager;
+        _dataCenters = dataCenters;
     }
 
     private String getMetricName(String name) {
@@ -277,7 +288,10 @@ public class AstyanaxDataWriterDAO implements DataWriterDAO, DataPurgeDAO {
             // Should synchronously write compaction and then delete deltas
             writeCompaction(rowKey, compactionKey, compaction, consistency, placement, keyspace, tbl, key);
 
-            deleteCompactedDeltas(rowKey, consistency, placement, keyspace, changesToDelete, historyList, tbl, key);
+            DateTime cutoffTimeForDeletes = CompactionControlUtils.getOldestStashStartTime(_defaultCompactionControlManager, _dataCenters);
+            if (cutoffTimeForDeletes == null || cutoffTimeForDeletes.getMillis() > System.currentTimeMillis()) {
+                deleteCompactedDeltas(rowKey, consistency, placement, keyspace, changesToDelete, historyList, tbl, key);
+            }
         }
     }
 

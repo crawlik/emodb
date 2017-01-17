@@ -20,7 +20,7 @@ import com.bazaarvoice.emodb.cachemgr.api.CacheRegistry;
 import com.bazaarvoice.emodb.databus.ReplicationKey;
 import com.bazaarvoice.emodb.databus.SystemInternalId;
 import com.bazaarvoice.emodb.sor.api.DataStore;
-import com.bazaarvoice.emodb.web.compactioncontrol.CompControlApiKey;
+import com.bazaarvoice.emodb.sor.compactioncontrol.CompControlApiKey;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.FluentIterable;

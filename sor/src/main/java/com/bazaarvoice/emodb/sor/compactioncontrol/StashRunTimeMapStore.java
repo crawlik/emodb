@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.web.compactioncontrol;
+package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.google.inject.BindingAnnotation;
 
@@ -11,10 +11,10 @@ import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Guice binding annotation for identifying the API key used by Compaction Control.
+ * Guice binding annotation for saving the timestamp of the running stash.
  */
 @BindingAnnotation
 @Target ({FIELD, PARAMETER, METHOD})
 @Retention (RUNTIME)
-public @interface CompControlApiKey {
+public @interface StashRunTimeMapStore {
 }

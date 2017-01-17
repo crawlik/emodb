@@ -70,6 +70,7 @@ import com.bazaarvoice.emodb.sor.DataStoreZooKeeper;
 import com.bazaarvoice.emodb.sor.api.DataStore;
 import com.bazaarvoice.emodb.sor.client.DataStoreClient;
 import com.bazaarvoice.emodb.sor.client.DataStoreClientFactory;
+import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlModule;
 import com.bazaarvoice.emodb.sor.condition.Condition;
 import com.bazaarvoice.emodb.sor.condition.Conditions;
 import com.bazaarvoice.emodb.sor.core.DataStoreAsyncModule;
@@ -80,6 +81,7 @@ import com.bazaarvoice.emodb.table.db.consistency.GlobalFullConsistencyZooKeeper
 import com.bazaarvoice.emodb.web.auth.AuthorizationConfiguration;
 import com.bazaarvoice.emodb.web.auth.OwnerDatabusAuthorizer;
 import com.bazaarvoice.emodb.web.auth.SecurityModule;
+import com.bazaarvoice.emodb.web.compactioncontrol.StashRunTimeMonitorManager;
 import com.bazaarvoice.emodb.web.partition.PartitionAwareClient;
 import com.bazaarvoice.emodb.web.partition.PartitionAwareServiceFactory;
 import com.bazaarvoice.emodb.web.plugins.DefaultPluginServerMetadata;
@@ -97,7 +99,6 @@ import com.bazaarvoice.emodb.web.settings.Setting;
 import com.bazaarvoice.emodb.web.settings.SettingsModule;
 import com.bazaarvoice.emodb.web.settings.SettingsRegistry;
 import com.bazaarvoice.emodb.web.settings.SorCqlDriverTask;
-import com.bazaarvoice.emodb.web.compactioncontrol.CompactionControlModule;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottle;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottleControlTask;
 import com.bazaarvoice.emodb.web.throttling.AdHocThrottleManager;
@@ -148,6 +149,7 @@ import java.util.concurrent.TimeUnit;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.blackList;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.blobStore_module;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.cache;
+import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.compaction_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.dataBus_module;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.dataCenter;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.dataStore_module;
@@ -157,7 +159,6 @@ import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Asp
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.leader_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.queue_module;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.report;
-import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.compaction_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.scanner;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.security;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.throttle;
@@ -186,6 +187,7 @@ public class EmoModule extends AbstractModule {
         evaluate(web, new WebSetup());
         evaluate(cache, new CacheSetup());
         evaluate(dataCenter, new DataCenterSetup());
+        evaluate(compaction_control, new CompactionControlSetup());
         evaluate(dataStore_module, new DataStoreSetup());
         evaluate(blobStore_module, new BlobStoreSetup());
         evaluate(dataBus_module, new DatabusSetup());
@@ -195,7 +197,6 @@ public class EmoModule extends AbstractModule {
         evaluate(blackList, new BlacklistSetup());
         evaluate(scanner, new ScannerSetup());
         evaluate(report, new ReportSetup());
-        evaluate(compaction_control, new CompactionControlSetup());
         evaluate(job, new JobSetup());
         evaluate(security, new SecuritySetup());
         evaluate(full_consistency, new FullConsistencySetup());
@@ -528,7 +529,10 @@ public class EmoModule extends AbstractModule {
 
     private class CompactionControlSetup extends AbstractModule  {
         @Override
-        protected void configure() { install(new CompactionControlModule()); }
+        protected void configure() {
+            install(new CompactionControlModule());
+            bind(StashRunTimeMonitorManager.class).asEagerSingleton();
+        }
     }
 
     private class JobSetup extends AbstractModule  {
