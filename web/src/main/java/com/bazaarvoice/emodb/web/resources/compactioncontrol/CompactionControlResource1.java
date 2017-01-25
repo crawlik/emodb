@@ -1,7 +1,7 @@
 package com.bazaarvoice.emodb.web.resources.compactioncontrol;
 
-import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlSource;
-import com.bazaarvoice.emodb.sor.compactioncontrol.StashRunTimeInfo;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import com.bazaarvoice.emodb.web.resources.SuccessResponse;
 import io.dropwizard.jersey.params.BooleanParam;
 import io.dropwizard.jersey.params.LongParam;
@@ -22,7 +22,6 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@Path ("/compcontrol/1")
 @Produces (MediaType.APPLICATION_JSON)
 public class CompactionControlResource1 {
 
@@ -38,19 +37,13 @@ public class CompactionControlResource1 {
     public SuccessResponse updateStashTime(@PathParam ("id") String id,
                                            @QueryParam ("timestamp") LongParam timestampInMillisParam,
                                            @QueryParam ("placement") List<String> placements,
-                                           @QueryParam ("remote") @DefaultValue ("FALSE") BooleanParam remote,
-                                           @QueryParam ("expiredTimestamp") LongParam expiredTimestampInMillisParam) {
+                                           @QueryParam ("expiredTimestamp") LongParam expiredTimestampInMillisParam,
+                                           @QueryParam ("remote") @DefaultValue ("FALSE") BooleanParam remote) {
         checkArgument(timestampInMillisParam != null, "timestamp is required");
         checkArgument(!placements.isEmpty(), "Placement is required");
+        checkArgument(expiredTimestampInMillisParam != null, "expired timestamp is required.");
 
-        long expiredTimestampInMillis;
-        if (expiredTimestampInMillisParam == null) {
-            expiredTimestampInMillis = timestampInMillisParam.get() + 10 * 60 * 60 * 1000;  // add 10 hours by default.
-        } else {
-            expiredTimestampInMillis = expiredTimestampInMillisParam.get();
-        }
-
-        _compactionControlSource.updateStashTime(id, timestampInMillisParam.get(), placements, remote.get(), expiredTimestampInMillis);
+        _compactionControlSource.updateStashTime(id, timestampInMillisParam.get(), placements, expiredTimestampInMillisParam.get(), remote.get());
         return SuccessResponse.instance();
     }
 
@@ -73,8 +66,8 @@ public class CompactionControlResource1 {
     @GET
     @Path ("/stash-time")
     @RequiresPermissions ("system|comp_control")
-    public Map<String, StashRunTimeInfo> listStashTimes() {
+    public Map<String, StashRunTimeInfo> getStashTimes() {
         // return Maps.transformValues(_compactionControlSource.listStashTimes(), value -> (value != null) ? value.toString() : null);
-        return _compactionControlSource.listStashTimes();
+        return _compactionControlSource.getStashTimes();
     }
 }

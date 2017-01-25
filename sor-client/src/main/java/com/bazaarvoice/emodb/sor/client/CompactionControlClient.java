@@ -1,9 +1,10 @@
-package com.bazaarvoice.emodb.sor.compactioncontrol;
+package com.bazaarvoice.emodb.sor.client;
 
-import com.bazaarvoice.emodb.auth.apikey.ApiKeyRequest;
-import com.sun.jersey.api.client.Client;
+import com.bazaarvoice.emodb.client.EmoClient;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
+import com.google.common.base.Preconditions;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
 import com.sun.jersey.api.client.UniformInterfaceException;
 
 import javax.ws.rs.core.MediaType;
@@ -17,47 +18,32 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public class CompactionControlClient implements CompactionControlSource {
 
-    /**
-     * Must match the @Path annotation on the CompactionControlResource1 class.
-     */
-    public static final String SERVICE_PATH = "/compcontrol/1";
-
-    private static final long DEFAULT_EXPIRY_IN_MILLIS = 10 * 60 * 60 * 1000;
-
-    private final Client _client;
+    private final EmoClient _client;
     private final UriBuilder _compactionControlSource;
-    private final String _apiKey;
 
-    public CompactionControlClient(URI endPoint, Client jerseyClient, String apiKey) {
-        _client = checkNotNull(jerseyClient, "jerseyClient");
+    public CompactionControlClient(URI endPoint, EmoClient jerseyClient) {
+        _client = Preconditions.checkNotNull(jerseyClient, "jerseyClient");
         _compactionControlSource = UriBuilder.fromUri(endPoint);
-        _apiKey = apiKey;
     }
 
     @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, Boolean remote) {
-        updateStashTime(id, timestamp, placements, remote, timestamp + DEFAULT_EXPIRY_IN_MILLIS);
-    }
-
-    @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, Boolean remote, long expiredTimestamp) {
+    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, Boolean remote) {
         checkNotNull(id, "id");
         checkNotNull(timestamp, "timestamp");
         checkNotNull(placements, "placements");
-        checkNotNull(remote, "remote");
         checkNotNull(expiredTimestamp, "expiredTimestamp");
+        checkNotNull(remote, "remote");
 
         try {
             URI uri = _compactionControlSource.clone()
-                    .segment("stash-time", id)
+                    .segment("_compcontrol", "stash-time", id)
                     .queryParam("timestamp", timestamp)
                     .queryParam("placement", placements)
-                    .queryParam("remote", remote)
                     .queryParam("expiredTimestamp", expiredTimestamp)
+                    .queryParam("remote", remote)
                     .build();
             _client.resource(uri)
                     .type(MediaType.APPLICATION_JSON_TYPE)
-                    .header(ApiKeyRequest.AUTHENTICATION_HEADER, _apiKey)
                     .post();
         } catch (UniformInterfaceException e) {
             throw convertException(e);
@@ -70,11 +56,10 @@ public class CompactionControlClient implements CompactionControlSource {
 
         try {
             URI uri = _compactionControlSource.clone()
-                    .segment("stash-time", id)
+                    .segment("_compcontrol", "stash-time", id)
                     .build();
             _client.resource(uri)
                     .type(MediaType.APPLICATION_JSON_TYPE)
-                    .header(ApiKeyRequest.AUTHENTICATION_HEADER, _apiKey)
                     .delete();
         } catch (UniformInterfaceException e) {
             throw convertException(e);
@@ -87,11 +72,10 @@ public class CompactionControlClient implements CompactionControlSource {
 
         try {
             URI uri = _compactionControlSource.clone()
-                    .segment("stash-time", id)
+                    .segment("_compcontrol", "stash-time", id)
                     .build();
             return _client.resource(uri)
                     .accept(MediaType.APPLICATION_JSON_TYPE)
-                    .header(ApiKeyRequest.AUTHENTICATION_HEADER, _apiKey)
                     .get(StashRunTimeInfo.class);
         } catch (UniformInterfaceException e) {
             throw convertException(e);
@@ -99,19 +83,29 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public Map<String, StashRunTimeInfo> listStashTimes() {
+    public Map<String, StashRunTimeInfo> getStashTimes() {
         try {
             URI uri = _compactionControlSource.clone()
-                    .segment("stash-time")
+                    .segment("_compcontrol", "stash-time")
                     .build();
             return _client.resource(uri)
                     .type(MediaType.APPLICATION_JSON_TYPE)
-                    .header(ApiKeyRequest.AUTHENTICATION_HEADER, _apiKey)
-                    .get(new GenericType<Map<String, StashRunTimeInfo>>() {
-                    });
+                    .get(Map.class);
         } catch (UniformInterfaceException e) {
             throw convertException(e);
         }
+    }
+
+    @Override
+    public long getOldStashTime() {
+        Map<String, StashRunTimeInfo> stashTimeInfoMap = getStashTimes();
+        return stashTimeInfoMap.size() > 0 ? stashTimeInfoMap.entrySet()
+                .stream()
+                .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
+                .get()
+                .getValue()
+                .getTimestamp()
+                : System.currentTimeMillis();
     }
 
     private RuntimeException convertException(UniformInterfaceException e) {

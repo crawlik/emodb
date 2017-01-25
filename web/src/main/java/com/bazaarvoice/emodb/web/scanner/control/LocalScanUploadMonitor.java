@@ -1,13 +1,11 @@
 package com.bazaarvoice.emodb.web.scanner.control;
 
-import com.bazaarvoice.emodb.datacenter.api.DataCenter;
-import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.plugin.stash.StashStateListener;
-import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlSource;
-import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.core.DataTools;
 import com.bazaarvoice.emodb.sor.db.ScanRange;
 import com.bazaarvoice.emodb.sor.db.ScanRangeSplits;
+import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.ScanDestination;
 import com.bazaarvoice.emodb.web.scanner.notifications.ScanCountListener;
 import com.bazaarvoice.emodb.web.scanner.scanstatus.ScanRangeStatus;
@@ -82,8 +80,7 @@ public class LocalScanUploadMonitor extends AbstractService {
     private final StashStateListener _stashStateListener;
     private final ScanCountListener _scanCountListener;
     private final DataTools _dataTools;
-    private final DefaultCompactionControlManager _defaultCompactionControlManager;
-    private final DataCenters _dataCenters;
+    private final List<CompactionControlSource> _compactionControlSourceList;
     private final Set<String> _activeScans = Sets.newHashSet();
 
     private ScheduledExecutorService _service;
@@ -91,7 +88,7 @@ public class LocalScanUploadMonitor extends AbstractService {
     public LocalScanUploadMonitor(ScanWorkflow scanWorkflow, ScanStatusDAO scanStatusDAO,
                                   ScanTableSetManager scanTableSetManager, ScanWriterGenerator scanWriterGenerator,
                                   StashStateListener stashStateListener, ScanCountListener scanCountListener,
-                                  DataTools dataTools, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters) {
+                                  DataTools dataTools, DefaultCompactionControlManager defaultCompactionControlManager) {
         _scanWorkflow = checkNotNull(scanWorkflow, "scanWorkflow");
         _scanStatusDAO = checkNotNull(scanStatusDAO, "scanStatusDAO");
         _scanTableSetManager = checkNotNull(scanTableSetManager, "scanTableSetManager");
@@ -99,8 +96,7 @@ public class LocalScanUploadMonitor extends AbstractService {
         _stashStateListener = checkNotNull(stashStateListener, "stashStateListener");
         _scanCountListener = checkNotNull(scanCountListener, "scanCountListener");
         _dataTools = checkNotNull(dataTools, "dataTools");
-        _defaultCompactionControlManager = checkNotNull(defaultCompactionControlManager, "defaultCompactionControlManager");
-        _dataCenters = checkNotNull(dataCenters, "dataCenters");
+        _compactionControlSourceList = checkNotNull(defaultCompactionControlManager.getAllCompactionControlSources(), "compactionControlSourceList");
     }
 
     @VisibleForTesting
@@ -451,8 +447,7 @@ public class LocalScanUploadMonitor extends AbstractService {
 
         try {
             // Delete the entry of the scan start time in Zookeeper.
-            for (DataCenter dataCenter : _dataCenters.getAll()) {
-                CompactionControlSource compactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
+            for (CompactionControlSource compactionControlSource : _compactionControlSourceList) {
                 compactionControlSource.deleteStashTime(id);
             }
         } catch (Exception e) {

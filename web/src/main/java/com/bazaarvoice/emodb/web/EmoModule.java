@@ -70,7 +70,6 @@ import com.bazaarvoice.emodb.sor.DataStoreZooKeeper;
 import com.bazaarvoice.emodb.sor.api.DataStore;
 import com.bazaarvoice.emodb.sor.client.DataStoreClient;
 import com.bazaarvoice.emodb.sor.client.DataStoreClientFactory;
-import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlModule;
 import com.bazaarvoice.emodb.sor.condition.Condition;
 import com.bazaarvoice.emodb.sor.condition.Conditions;
 import com.bazaarvoice.emodb.sor.core.DataStoreAsyncModule;
@@ -81,7 +80,7 @@ import com.bazaarvoice.emodb.table.db.consistency.GlobalFullConsistencyZooKeeper
 import com.bazaarvoice.emodb.web.auth.AuthorizationConfiguration;
 import com.bazaarvoice.emodb.web.auth.OwnerDatabusAuthorizer;
 import com.bazaarvoice.emodb.web.auth.SecurityModule;
-import com.bazaarvoice.emodb.web.compactioncontrol.StashRunTimeMonitorManager;
+import com.bazaarvoice.emodb.web.compactioncontrol.CompactionControlModule;
 import com.bazaarvoice.emodb.web.partition.PartitionAwareClient;
 import com.bazaarvoice.emodb.web.partition.PartitionAwareServiceFactory;
 import com.bazaarvoice.emodb.web.plugins.DefaultPluginServerMetadata;
@@ -531,7 +530,6 @@ public class EmoModule extends AbstractModule {
         @Override
         protected void configure() {
             install(new CompactionControlModule());
-            bind(StashRunTimeMonitorManager.class).asEagerSingleton();
         }
     }
 

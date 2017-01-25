@@ -2,6 +2,7 @@ package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.zookeeper.store.ZkTimestampSerializer;
 import com.bazaarvoice.emodb.common.zookeeper.store.ZkValueSerializer;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;

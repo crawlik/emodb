@@ -1,4 +1,4 @@
-package com.bazaarvoice.emodb.sor.compactioncontrol;
+package com.bazaarvoice.emodb.sor.api;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;

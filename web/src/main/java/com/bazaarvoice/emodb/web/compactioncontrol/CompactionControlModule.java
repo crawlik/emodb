@@ -1,9 +1,14 @@
-package com.bazaarvoice.emodb.sor.compactioncontrol;
+package com.bazaarvoice.emodb.web.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.dropwizard.lifecycle.LifeCycleRegistry;
 import com.bazaarvoice.emodb.common.zookeeper.store.MapStore;
 import com.bazaarvoice.emodb.common.zookeeper.store.ZkMapStore;
 import com.bazaarvoice.emodb.datacenter.DataCenterConfiguration;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlSource;
+import com.bazaarvoice.emodb.sor.compactioncontrol.StashRunTimeInfoSerializer;
+import com.bazaarvoice.emodb.sor.compactioncontrol.StashRunTimeMapStore;
 import com.bazaarvoice.emodb.table.db.astyanax.CurrentDataCenter;
 import com.bazaarvoice.emodb.table.db.consistency.GlobalFullConsistencyZooKeeper;
 import com.google.inject.PrivateModule;
@@ -30,6 +35,8 @@ public class CompactionControlModule extends PrivateModule {
 
         bind(DefaultCompactionControlManager.class).asEagerSingleton();
         expose(DefaultCompactionControlManager.class);
+
+        bind(StashRunTimeMonitorManager.class).asEagerSingleton();
     }
 
     @Provides

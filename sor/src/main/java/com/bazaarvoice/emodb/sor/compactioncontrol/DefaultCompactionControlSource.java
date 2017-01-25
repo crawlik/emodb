@@ -1,6 +1,8 @@
 package com.bazaarvoice.emodb.sor.compactioncontrol;
 
 import com.bazaarvoice.emodb.common.zookeeper.store.MapStore;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import com.bazaarvoice.emodb.table.db.astyanax.CurrentDataCenter;
 import com.google.common.base.Throwables;
 import com.google.inject.Inject;
@@ -28,12 +30,7 @@ public class DefaultCompactionControlSource implements CompactionControlSource {
     }
 
     @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, Boolean remote) {
-        updateStashTime(id, timestamp, placements, remote, timestamp + DEFAULT_EXPIRY_IN_MILLIS);
-    }
-
-    @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, Boolean remote, long expiredTimestamp) {
+    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, Boolean remote) {
         checkNotNull(id, "id");
         checkNotNull(timestamp, "timestamp");
         checkNotNull(placements, "placements");
@@ -68,7 +65,20 @@ public class DefaultCompactionControlSource implements CompactionControlSource {
     }
 
     @Override
-    public Map<String, StashRunTimeInfo> listStashTimes() {
+    public Map<String, StashRunTimeInfo> getStashTimes() {
         return _stashStartTimestampInfo.getAll();
     }
+
+    @Override
+    public long getOldStashTime() {
+        Map<String, StashRunTimeInfo> stashTimeInfoMap = getStashTimes();
+        return stashTimeInfoMap.size() > 0 ? stashTimeInfoMap.entrySet()
+                .stream()
+                .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
+                .get()
+                .getValue()
+                .getTimestamp()
+                : System.currentTimeMillis();
+    }
+
 }

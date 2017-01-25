@@ -280,11 +280,6 @@ public class InMemoryDataDAO implements DataReaderDAO, DataWriterDAO {
 
         Map<UUID, Change> changes = safePut(_contentChanges, table.getName(), key);
 
-//        DateTime cutoffTimeForDeletes = CompactionControlUtils.getOldestStashStartTime(_defaultCompactionControlManager, _dataCenters);
-//        if (cutoffTimeForDeletes == null || cutoffTimeForDeletes.getMillis() > System.currentTimeMillis()) {
-//            // delete the old deltas & compaction records
-//            deleteDeltas(changesToDelete, changes);
-//        }
         deleteDeltas(changesToDelete, changes);
 
         // add the compaction record and update the last content of the last delta

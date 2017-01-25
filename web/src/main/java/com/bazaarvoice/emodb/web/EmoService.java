@@ -19,8 +19,8 @@ import com.bazaarvoice.emodb.queue.api.DedupQueueService;
 import com.bazaarvoice.emodb.queue.api.QueueService;
 import com.bazaarvoice.emodb.queue.client.DedupQueueServiceAuthenticator;
 import com.bazaarvoice.emodb.queue.client.QueueServiceAuthenticator;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.DataStore;
-import com.bazaarvoice.emodb.sor.compactioncontrol.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.core.DataStoreAsync;
 import com.bazaarvoice.emodb.web.auth.EncryptConfigurationApiKeyCommand;
 import com.bazaarvoice.emodb.web.cli.AllTablesReportCommand;
@@ -35,7 +35,6 @@ import com.bazaarvoice.emodb.web.partition.PartitionAwareClient;
 import com.bazaarvoice.emodb.web.report.ReportLoader;
 import com.bazaarvoice.emodb.web.resources.FaviconResource;
 import com.bazaarvoice.emodb.web.resources.blob.BlobStoreResource1;
-import com.bazaarvoice.emodb.web.resources.compactioncontrol.CompactionControlResource1;
 import com.bazaarvoice.emodb.web.resources.databus.DatabusResource1;
 import com.bazaarvoice.emodb.web.resources.databus.DatabusResourcePoller;
 import com.bazaarvoice.emodb.web.resources.databus.ReplicationResource1;
@@ -89,7 +88,6 @@ import java.util.List;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.blackList;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.blobStore_web;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.cache;
-import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.compaction_control;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.dataBus_web;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.dataStore_web;
 import static com.bazaarvoice.emodb.common.dropwizard.service.EmoServiceMode.Aspect.invalidation_cache_listener;
@@ -195,7 +193,6 @@ public class EmoService extends Application<EmoConfiguration> {
         evaluateBlackList();
         evaluateReporting();
         evaluateThrottling();
-        evaluateCompactionControl();
         evaluateScanner();
         evaluateServiceStartedListeners();
         evaluateSwagger();
@@ -230,8 +227,9 @@ public class EmoService extends Application<EmoConfiguration> {
         DataStore dataStore = _injector.getInstance(DataStore.class);
         ResourceRegistry resources = _injector.getInstance(ResourceRegistry.class);
         DataStoreAsync dataStoreAsync = _injector.getInstance(DataStoreAsync.class);
+        CompactionControlSource compactionControlSource = _injector.getInstance(CompactionControlSource.class);
         // Start the System Of Record service
-        resources.addResource(_cluster, "emodb-sor-1", new DataStoreResource1(dataStore, dataStoreAsync));
+        resources.addResource(_cluster, "emodb-sor-1", new DataStoreResource1(dataStore, dataStoreAsync, compactionControlSource));
     }
 
     private void evaluateBlobStore()
@@ -351,17 +349,6 @@ public class EmoService extends Application<EmoConfiguration> {
         _environment.jersey().getResourceConfig().getContainerResponseFilters().add(adHocThrottleFilter);
         // Add API Key authentication and authorization
         authConfigurator.configure(_environment);
-    }
-
-    private void evaluateCompactionControl()
-            throws Exception {
-        if (!runPerServiceMode(compaction_control)) {
-            return;
-        }
-
-        // Add the compaction control endpoint.
-        _environment.jersey().register(new CompactionControlResource1(_injector.getInstance(CompactionControlSource.class)));
-
     }
 
     private void evaluateServiceStartedListeners() throws Exception {

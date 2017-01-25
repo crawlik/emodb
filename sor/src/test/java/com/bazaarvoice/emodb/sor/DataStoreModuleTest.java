@@ -16,9 +16,10 @@ import com.bazaarvoice.emodb.datacenter.DataCenterConfiguration;
 import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.job.api.JobHandlerRegistry;
 import com.bazaarvoice.emodb.job.api.JobService;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.DataStore;
 import com.bazaarvoice.emodb.sor.compactioncontrol.CompControlApiKey;
-import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlManager;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DefaultCompactionControlSource;
 import com.bazaarvoice.emodb.sor.core.DataProvider;
 import com.bazaarvoice.emodb.sor.core.SystemDataStore;
 import com.bazaarvoice.emodb.sor.db.astyanax.AstyanaxDataReaderDAO;
@@ -143,7 +144,7 @@ public class DataStoreModuleTest {
                 bind(new TypeLiteral<Supplier<Boolean>>(){}).annotatedWith(CqlForMultiGets.class).toInstance(Suppliers.ofInstance(true));
                 bind(new TypeLiteral<Supplier<Boolean>>(){}).annotatedWith(CqlForScans.class).toInstance(Suppliers.ofInstance(true));
                 bind(Clock.class).toInstance(Clock.systemDefaultZone());
-                bind(DefaultCompactionControlManager.class).asEagerSingleton();
+                bind(CompactionControlSource.class).to(DefaultCompactionControlSource.class).asEagerSingleton();
                 bind(String.class).annotatedWith(CompControlApiKey.class).toInstance("CompControlApiKey");
 
                 install(new DataStoreModule(serviceMode));

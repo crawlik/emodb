@@ -1,7 +1,6 @@
-package com.bazaarvoice.emodb.sor.compactioncontrol;
+package com.bazaarvoice.emodb.web.compactioncontrol;
 
-import com.bazaarvoice.emodb.datacenter.api.DataCenter;
-import com.bazaarvoice.emodb.datacenter.api.DataCenters;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AbstractScheduledService;
@@ -9,6 +8,7 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -26,12 +26,10 @@ public class StashRunTimeMonitor extends AbstractScheduledService {
     @VisibleForTesting
     protected static final Long CURRENT_TIME = System.currentTimeMillis();
 
-    private final DefaultCompactionControlManager _defaultCompactionControlManager;
-    private final DataCenters _dataCenters;
+    private final List<CompactionControlSource> _compactionControlSourceList;
 
-    public StashRunTimeMonitor(DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters) {
-        _defaultCompactionControlManager = checkNotNull(defaultCompactionControlManager, "defaultCompactionControlManager");
-        _dataCenters = checkNotNull(dataCenters, "dataCenters");
+    public StashRunTimeMonitor(DefaultCompactionControlManager defaultCompactionControlManager) {
+        _compactionControlSourceList = checkNotNull(defaultCompactionControlManager.getAllCompactionControlSources(), "compactionControlSourceList");
     }
 
     @Override
@@ -55,13 +53,11 @@ public class StashRunTimeMonitor extends AbstractScheduledService {
     private void deleteExpiredStashTimes() {
         try {
             _log.debug("Checking for expired stash times at {}", CURRENT_TIME);
-            for (DataCenter dataCenter : _dataCenters.getAll()) {
-                CompactionControlSource compactionControlSource = _defaultCompactionControlManager.newCompactionControlSource(dataCenter);
-
-                Set<String> expiredIds = Maps.filterValues(compactionControlSource.listStashTimes(), value -> value.getExpiredTimestamp() > CURRENT_TIME).keySet();
-
+            // TODO - check: running this for all datacenters here - is it ok or just do the current datacenter only?
+            for (CompactionControlSource compactionControlSource : _compactionControlSourceList) {
+                Set<String> expiredIds = Maps.filterValues(compactionControlSource.getStashTimes(), value -> value.getExpiredTimestamp() > CURRENT_TIME).keySet();
                 for (String id : expiredIds) {
-                    // If we are deleting the entries here, then there could be a problem. So setting it as an ERROR.
+                    // If we are deleting the entries here, then there could be a problem which we may want to know. So setting it as an ERROR.
                     _log.error("Deleting the stash time entry for id: {}", id);
                     compactionControlSource.deleteStashTime(id);
                 }
