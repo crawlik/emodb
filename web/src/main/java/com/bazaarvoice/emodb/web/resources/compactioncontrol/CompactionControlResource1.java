@@ -3,12 +3,11 @@ package com.bazaarvoice.emodb.web.resources.compactioncontrol;
 import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import com.bazaarvoice.emodb.web.resources.SuccessResponse;
-import io.dropwizard.jersey.params.BooleanParam;
+import com.google.common.base.Strings;
 import io.dropwizard.jersey.params.LongParam;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 
 import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -38,36 +37,35 @@ public class CompactionControlResource1 {
                                            @QueryParam ("timestamp") LongParam timestampInMillisParam,
                                            @QueryParam ("placement") List<String> placements,
                                            @QueryParam ("expiredTimestamp") LongParam expiredTimestampInMillisParam,
-                                           @QueryParam ("remote") @DefaultValue ("FALSE") BooleanParam remote) {
+                                           @QueryParam ("dataCenter") String dataCenter) {
         checkArgument(timestampInMillisParam != null, "timestamp is required");
         checkArgument(!placements.isEmpty(), "Placement is required");
         checkArgument(expiredTimestampInMillisParam != null, "expired timestamp is required.");
 
-        _compactionControlSource.updateStashTime(id, timestampInMillisParam.get(), placements, expiredTimestampInMillisParam.get(), remote.get());
+        _compactionControlSource.updateStashTime(id, timestampInMillisParam.get(), placements, expiredTimestampInMillisParam.get(), dataCenter);
         return SuccessResponse.instance();
     }
 
     @DELETE
     @Path ("/stash-time/{id}")
     @RequiresPermissions ("system|comp_control")
-    public SuccessResponse deleteStashTime(@PathParam ("id") String id) {
-        _compactionControlSource.deleteStashTime(id);
+    public SuccessResponse deleteStashTime(@PathParam ("id") String id, @QueryParam ("dataCenter") String dataCenter) {
+        _compactionControlSource.deleteStashTime(id, dataCenter);
         return SuccessResponse.instance();
     }
 
     @GET
     @Path ("/stash-time/{id}")
     @RequiresPermissions ("system|comp_control")
-    public String getStashTime(@PathParam ("id") String id) {
-        StashRunTimeInfo stashTimeInfo = _compactionControlSource.getStashTime(id);
+    public String getStashTime(@PathParam ("id") String id, @QueryParam ("dataCenter") String dataCenter) {
+        StashRunTimeInfo stashTimeInfo = _compactionControlSource.getStashTime(id, dataCenter);
         return (stashTimeInfo != null) ? stashTimeInfo.toString() : null;
     }
 
     @GET
     @Path ("/stash-time")
     @RequiresPermissions ("system|comp_control")
-    public Map<String, StashRunTimeInfo> getStashTimes() {
-        // return Maps.transformValues(_compactionControlSource.listStashTimes(), value -> (value != null) ? value.toString() : null);
-        return _compactionControlSource.getStashTimes();
+    public Map<String, StashRunTimeInfo> getStashTimesForPlacement(@QueryParam ("placement") String placement) {
+        return Strings.isNullOrEmpty(placement) ? _compactionControlSource.getAllStashTimes() : _compactionControlSource.getStashTimesForPlacement(placement);
     }
 }

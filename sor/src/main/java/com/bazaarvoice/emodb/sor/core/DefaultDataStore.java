@@ -15,10 +15,12 @@ import com.bazaarvoice.emodb.sor.api.Intrinsic;
 import com.bazaarvoice.emodb.sor.api.Names;
 import com.bazaarvoice.emodb.sor.api.ReadConsistency;
 import com.bazaarvoice.emodb.sor.api.StashNotAvailableException;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import com.bazaarvoice.emodb.sor.api.TableOptions;
 import com.bazaarvoice.emodb.sor.api.UnknownTableException;
 import com.bazaarvoice.emodb.sor.api.Update;
 import com.bazaarvoice.emodb.sor.api.WriteConsistency;
+import com.bazaarvoice.emodb.sor.compactioncontrol.LocalCompactionControl;
 import com.bazaarvoice.emodb.sor.condition.Conditions;
 import com.bazaarvoice.emodb.sor.db.DataReaderDAO;
 import com.bazaarvoice.emodb.sor.db.DataWriterDAO;
@@ -89,18 +91,16 @@ public class DefaultDataStore implements DataStore, DataProvider, DataTools, Tab
     private final AuditStore _auditStore;
     private final Optional<URI> _stashRootDirectory;
     private final Timer _resolveAnnotatedEventTimer;
-
     @VisibleForTesting
     protected final Counter _archiveDeltaSize;
     private final Meter _discardedCompactions;
     private final Compactor _compactor;
-
     private final CompactionControlSource _compactionControlSource;
 
     @Inject
     public DefaultDataStore(LifeCycleRegistry lifeCycle, MetricRegistry metricRegistry, EventBus eventBus, TableDAO tableDao,
                             DataReaderDAO dataReaderDao, DataWriterDAO dataWriterDao, SlowQueryLog slowQueryLog, AuditStore auditStore,
-                            @StashRoot Optional<URI> stashRootDirectory, CompactionControlSource compactionControlSource) {
+                            @StashRoot Optional<URI> stashRootDirectory, @LocalCompactionControl CompactionControlSource compactionControlSource) {
         this(eventBus, tableDao, dataReaderDao, dataWriterDao, slowQueryLog, defaultCompactionExecutor(lifeCycle),
                 auditStore, stashRootDirectory, compactionControlSource, metricRegistry);
     }
@@ -339,16 +339,20 @@ public class DefaultDataStore implements DataStore, DataProvider, DataTools, Tab
     private Expanded expand(final Record record, boolean ignoreRecent, final ReadConsistency consistency) {
         long fullConsistencyTimeStamp = _dataWriterDao.getFullConsistencyTimestamp(record.getKey().getTable());
         long rawConsistencyTimeStamp = _dataWriterDao.getRawConsistencyTimestamp(record.getKey().getTable());
-        // TODO: right now going with the old stash time just in the current data center - right thing is to get this from all the datacenters.
-        // (Need to address this after confirming if the current data centers approach is the best way to go.)
-        long stashRunTimeStamp = _compactionControlSource.getOldStashTime();
+        Map<String, StashRunTimeInfo> stashTimeInfoMap = _compactionControlSource.getStashTimesForPlacement(record.getKey().getTable().getAvailability().getPlacement());
+        long compactionControlTimestamp = (stashTimeInfoMap.size() > 0) ? stashTimeInfoMap.entrySet().stream()
+                    .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
+                    .get()
+                    .getValue()
+                    .getTimestamp()
+                : System.currentTimeMillis();
 
-        return expand(record, fullConsistencyTimeStamp, rawConsistencyTimeStamp, stashRunTimeStamp, ignoreRecent, consistency);
+        return expand(record, fullConsistencyTimeStamp, rawConsistencyTimeStamp, compactionControlTimestamp, ignoreRecent, consistency);
     }
 
-    private Expanded expand(final Record record, long fullConsistencyTimestamp, long rawConsistencyTimestamp, long deleteDeltasTimestamp, boolean ignoreRecent, final ReadConsistency consistency) {
+    private Expanded expand(final Record record, long fullConsistencyTimestamp, long rawConsistencyTimestamp, long compactionControlTimestamp, boolean ignoreRecent, final ReadConsistency consistency) {
         MutableIntrinsics intrinsics = MutableIntrinsics.create(record.getKey());
-        return _compactor.expand(record, fullConsistencyTimestamp, rawConsistencyTimestamp, deleteDeltasTimestamp, intrinsics, ignoreRecent, new Supplier<Record>() {
+        return _compactor.expand(record, fullConsistencyTimestamp, rawConsistencyTimestamp, compactionControlTimestamp, intrinsics, ignoreRecent, new Supplier<Record>() {
                     @Override
                     public Record get() {
                         return _dataReaderDao.read(record.getKey(), consistency);

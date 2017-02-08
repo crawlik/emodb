@@ -27,12 +27,12 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, Boolean remote) {
+    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, String dataCenter) {
         checkNotNull(id, "id");
         checkNotNull(timestamp, "timestamp");
         checkNotNull(placements, "placements");
         checkNotNull(expiredTimestamp, "expiredTimestamp");
-        checkNotNull(remote, "remote");
+        checkNotNull(dataCenter, "dataCenter");
 
         try {
             URI uri = _compactionControlSource.clone()
@@ -40,7 +40,7 @@ public class CompactionControlClient implements CompactionControlSource {
                     .queryParam("timestamp", timestamp)
                     .queryParam("placement", placements)
                     .queryParam("expiredTimestamp", expiredTimestamp)
-                    .queryParam("remote", remote)
+                    .queryParam("dataCenter", dataCenter)
                     .build();
             _client.resource(uri)
                     .type(MediaType.APPLICATION_JSON_TYPE)
@@ -51,12 +51,13 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public void deleteStashTime(String id) {
+    public void deleteStashTime(String id, String dataCenter) {
         checkNotNull(id, "id");
 
         try {
             URI uri = _compactionControlSource.clone()
                     .segment("_compcontrol", "stash-time", id)
+                    .queryParam("dataCenter", dataCenter)
                     .build();
             _client.resource(uri)
                     .type(MediaType.APPLICATION_JSON_TYPE)
@@ -67,12 +68,13 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public StashRunTimeInfo getStashTime(String id) {
+    public StashRunTimeInfo getStashTime(String id, String dataCenter) {
         checkNotNull(id, "id");
 
         try {
             URI uri = _compactionControlSource.clone()
                     .segment("_compcontrol", "stash-time", id)
+                    .queryParam("dataCenter", dataCenter)
                     .build();
             return _client.resource(uri)
                     .accept(MediaType.APPLICATION_JSON_TYPE)
@@ -83,7 +85,7 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public Map<String, StashRunTimeInfo> getStashTimes() {
+    public Map<String, StashRunTimeInfo> getAllStashTimes() {
         try {
             URI uri = _compactionControlSource.clone()
                     .segment("_compcontrol", "stash-time")
@@ -97,15 +99,20 @@ public class CompactionControlClient implements CompactionControlSource {
     }
 
     @Override
-    public long getOldStashTime() {
-        Map<String, StashRunTimeInfo> stashTimeInfoMap = getStashTimes();
-        return stashTimeInfoMap.size() > 0 ? stashTimeInfoMap.entrySet()
-                .stream()
-                .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
-                .get()
-                .getValue()
-                .getTimestamp()
-                : System.currentTimeMillis();
+    public Map<String, StashRunTimeInfo> getStashTimesForPlacement(String placement) {
+        checkNotNull(placement, "placement");
+
+        try {
+            URI uri = _compactionControlSource.clone()
+                    .segment("_compcontrol", "stash-time")
+                    .queryParam("placement", placement)
+                    .build();
+            return _client.resource(uri)
+                    .type(MediaType.APPLICATION_JSON_TYPE)
+                    .get(Map.class);
+        } catch (UniformInterfaceException e) {
+            throw convertException(e);
+        }
     }
 
     private RuntimeException convertException(UniformInterfaceException e) {

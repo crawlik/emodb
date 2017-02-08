@@ -15,28 +15,25 @@ public class StashRunTimeInfo {
     private String _timestampISO;
     private List<String> _placements;
     private String _dataCenter;
-    private Boolean _remote;
     private Long _expiredTimestamp;
     private String _expiredTimestampISO;
 
-    public StashRunTimeInfo(Long timestamp, List<String> placements, String dataCenter, Boolean remote, Long expiredTimestamp) {
+    public StashRunTimeInfo(Long timestamp, List<String> placements, String dataCenter, Long expiredTimestamp) {
         this._timestamp = timestamp;
         this._timestampISO = (_timestamp != null) ? ISO8601Utils.format(new Date(_timestamp), true) : null;
         this._placements = placements;
         this._dataCenter = dataCenter;
-        this._remote = remote;
         this._expiredTimestamp = expiredTimestamp;
         this._expiredTimestampISO = (_expiredTimestamp != null) ? ISO8601Utils.format(new Date(_expiredTimestamp), true) : null;
     }
 
     @JsonCreator
-    public StashRunTimeInfo(@JsonProperty ("timestamp") Long timestamp, @JsonProperty ("timestampISO") String timestampISO, @JsonProperty ("placements") List<String> placements, @JsonProperty ("dataCenter") String dataCenter,
-                            @JsonProperty ("remote") Boolean remote, @JsonProperty ("expiredTimestamp") Long expiredTimestamp, @JsonProperty ("expiredTimestampISO") String expiredTimestampISO) {
+    public StashRunTimeInfo(@JsonProperty ("timestamp") Long timestamp, @JsonProperty ("timestampISO") String timestampISO, @JsonProperty ("placements") List<String> placements,
+                            @JsonProperty ("dataCenter") String dataCenter, @JsonProperty ("expiredTimestamp") Long expiredTimestamp, @JsonProperty ("expiredTimestampISO") String expiredTimestampISO) {
         this._timestamp = timestamp;
         this._timestampISO = timestampISO;
         this._placements = placements;
         this._dataCenter = dataCenter;
-        this._remote = remote;
         this._expiredTimestamp = expiredTimestamp;
         this._expiredTimestampISO = expiredTimestampISO;
     }
@@ -55,10 +52,6 @@ public class StashRunTimeInfo {
 
     public String getDataCenter() {
         return _dataCenter;
-    }
-
-    public Boolean getRemote() {
-        return _remote;
     }
 
     public Long getExpiredTimestamp() {

@@ -30,8 +30,6 @@ cluster: local_default
 #      type: http
 #      apiKey: invalid-key
 
-
-
 dataCenter:
   # Which data center does this server belong to?
   currentDataCenter: datacenter1

@@ -3,12 +3,14 @@ package com.bazaarvoice.emodb.sor.compactioncontrol;
 import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
 import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -20,15 +22,15 @@ public class InMemoryCompactionControlSource implements CompactionControlSource 
     private Map<String, StashRunTimeInfo> _stashStartTimestampInfo = Maps.newConcurrentMap();
 
     @Override
-    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, Boolean remote) {
+    public void updateStashTime(String id, long timestamp, List<String> placements, long expiredTimestamp, String dataCenter) {
         checkNotNull(id, "id");
         checkNotNull(timestamp, "timestamp");
         checkNotNull(placements, "placements");
-        checkNotNull(remote, "remote");
         checkNotNull(expiredTimestamp, "expiredTimestamp");
+        checkNotNull(dataCenter, "dataCenter");
 
         try {
-            _stashStartTimestampInfo.put(id, new StashRunTimeInfo(timestamp, placements, "us-east-1", remote, expiredTimestamp));
+            _stashStartTimestampInfo.put(id, new StashRunTimeInfo(timestamp, placements, dataCenter, expiredTimestamp));
         } catch (Exception e) {
             _log.error("Failed to update stash timestamp info for id: {}", id, e);
             throw Throwables.propagate(e);
@@ -36,7 +38,7 @@ public class InMemoryCompactionControlSource implements CompactionControlSource 
     }
 
     @Override
-    public void deleteStashTime(String id) {
+    public void deleteStashTime(String id, String dataCenter) {
         checkNotNull(id, "id");
 
         try {
@@ -48,26 +50,23 @@ public class InMemoryCompactionControlSource implements CompactionControlSource 
     }
 
     @Override
-    public StashRunTimeInfo getStashTime(String id) {
+    public StashRunTimeInfo getStashTime(String id, String dataCenter) {
         checkNotNull(id, "id");
 
         return _stashStartTimestampInfo.get(id);
     }
 
     @Override
-    public Map<String, StashRunTimeInfo> getStashTimes() {
+    public Map<String, StashRunTimeInfo> getAllStashTimes() {
         return _stashStartTimestampInfo;
     }
 
     @Override
-    public long getOldStashTime() {
-        Map<String, StashRunTimeInfo> stashTimeInfoMap = getStashTimes();
-        return stashTimeInfoMap.size() > 0 ? stashTimeInfoMap.entrySet()
+    public Map<String, StashRunTimeInfo> getStashTimesForPlacement(String placement) {
+        return _stashStartTimestampInfo.size() > 0 ? _stashStartTimestampInfo.entrySet()
                 .stream()
-                .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
-                .get()
-                .getValue()
-                .getTimestamp()
-                : System.currentTimeMillis();
+                .filter(stashTime -> stashTime.getValue().getPlacements().contains(placement))
+                .collect(Collectors.toMap(p -> p.getKey(), p -> p.getValue()))
+                : ImmutableMap.of();
     }
 }

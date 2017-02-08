@@ -17,7 +17,7 @@ public class StashRunTimeInfoSerializer implements ZkValueSerializer<StashRunTim
 
     @Override
     public String toString(StashRunTimeInfo stashRunTimeInfo) {
-        return String.format("%s;%s;%s;%s;%s", TIMESTAMP_SERIALIZER.toString(stashRunTimeInfo.getTimestamp()), stashRunTimeInfo.getDataCenter(), stashRunTimeInfo.getRemote(),
+        return String.format("%s;%s;%s;%s", TIMESTAMP_SERIALIZER.toString(stashRunTimeInfo.getTimestamp()), stashRunTimeInfo.getDataCenter(),
                 stashRunTimeInfo.getExpiredTimestamp(), StringUtils.join(stashRunTimeInfo.getPlacements(), ','));
     }
 
@@ -30,11 +30,10 @@ public class StashRunTimeInfoSerializer implements ZkValueSerializer<StashRunTim
             List<String> strings = Arrays.asList(StringUtils.split(string, ";"));
             Long timestamp = TIMESTAMP_SERIALIZER.fromString(strings.get(0));
             String dataCenter = strings.get(1);
-            Boolean remote = Boolean.valueOf(strings.get(2));
-            Long expiredTimestamp = TIMESTAMP_SERIALIZER.fromString(strings.get(3));
-            List<String> placements = Arrays.asList(StringUtils.split(strings.get(4), ","));
+            Long expiredTimestamp = TIMESTAMP_SERIALIZER.fromString(strings.get(2));
+            List<String> placements = Arrays.asList(StringUtils.split(strings.get(3), ","));
 
-            return new StashRunTimeInfo(timestamp, placements, dataCenter, remote, expiredTimestamp);
+            return new StashRunTimeInfo(timestamp, placements, dataCenter, expiredTimestamp);
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("StashRunTimeInfo string must be of the form \"timestamp;datacenter;remote;placement1,placement2,placement3,...\"");
         }

@@ -3,16 +3,16 @@ package com.bazaarvoice.emodb.web.scanner.rangescan;
 import com.bazaarvoice.emodb.common.api.impl.LimitCounter;
 import com.bazaarvoice.emodb.common.dropwizard.lifecycle.LifeCycleRegistry;
 import com.bazaarvoice.emodb.common.dropwizard.metrics.MetricCounterOutputStream;
-import com.bazaarvoice.emodb.datacenter.api.DataCenters;
 import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.Intrinsic;
 import com.bazaarvoice.emodb.sor.api.ReadConsistency;
+import com.bazaarvoice.emodb.sor.api.StashRunTimeInfo;
+import com.bazaarvoice.emodb.sor.compactioncontrol.DelegateCompactionControl;
 import com.bazaarvoice.emodb.sor.core.DataTools;
 import com.bazaarvoice.emodb.sor.db.MultiTableScanOptions;
 import com.bazaarvoice.emodb.sor.db.MultiTableScanResult;
 import com.bazaarvoice.emodb.sor.db.ScanRange;
 import com.bazaarvoice.emodb.table.db.TableSet;
-import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.ScanOptions;
 import com.bazaarvoice.emodb.web.scanner.writer.ScanWriter;
 import com.bazaarvoice.emodb.web.scanner.writer.ScanWriterGenerator;
@@ -53,7 +53,6 @@ import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +65,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
@@ -110,17 +108,17 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
     private ScheduledExecutorService _timeoutService;
     private volatile boolean _shutdown = true;
 
-    private final List<CompactionControlSource> _compactionControlSourceList;
+    private final CompactionControlSource _compactionControlSource;
 
     @Inject
-    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters,
+    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, @DelegateCompactionControl CompactionControlSource compactionControlSource,
                                   LifeCycleRegistry lifecycle, MetricRegistry metricRegistry) {
-        this(dataTools, scanWriterGenerator, defaultCompactionControlManager, dataCenters, lifecycle, metricRegistry, PIPELINE_THREAD_COUNT, PIPELINE_BATCH_SIZE,
+        this(dataTools, scanWriterGenerator, compactionControlSource, lifecycle, metricRegistry, PIPELINE_THREAD_COUNT, PIPELINE_BATCH_SIZE,
                 WAIT_FOR_ALL_TRANSFERS_COMPLETE_CHECK_INTERVAL, WAIT_FOR_ALL_TRANSFERS_COMPLETE_TIMEOUT);
     }
 
     @VisibleForTesting
-    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, DefaultCompactionControlManager defaultCompactionControlManager, DataCenters dataCenters, LifeCycleRegistry lifecycle,
+    public LocalRangeScanUploader(DataTools dataTools, ScanWriterGenerator scanWriterGenerator, CompactionControlSource compactionControlSource, LifeCycleRegistry lifecycle,
                                   final MetricRegistry metricRegistry, int threadCount, int batchSize, Duration waitForAllTransfersCompleteCheckInterval,
                                   Duration waitForAllTransfersCompleteTimeout) {
         _dataTools = dataTools;
@@ -130,7 +128,7 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
         _waitForAllTransfersCompleteCheckInterval = waitForAllTransfersCompleteCheckInterval;
         _waitForAllTransfersCompleteTimeout = waitForAllTransfersCompleteTimeout;
 
-        _compactionControlSourceList = checkNotNull(defaultCompactionControlManager.getAllCompactionControlSources(), "compactionControlSourceList");
+        _compactionControlSource = checkNotNull(compactionControlSource, "compactionControlSource");
 
         // Initialize the ObjectMapper
         _mapper = new ObjectMapper();
@@ -255,9 +253,15 @@ public class LocalRangeScanUploader implements RangeScanUploader, Managed {
             Batch batch = new Batch(context, partCountForFirstShard);
 
             // check if there is a stash cut off time.
-            List<Long> minStashTimes = Lists.newArrayList();
-            minStashTimes.addAll(_compactionControlSourceList.stream().map(CompactionControlSource::getOldStashTime).collect(Collectors.toList()));
-            DateTime cutoffTime = (minStashTimes.size() > 0) ? new DateTime(new Date(minStashTimes.stream().min(Long::compare).get())) : null;
+            Map<String, StashRunTimeInfo> stashTimeInfoMap = _compactionControlSource.getStashTimesForPlacement(placement);
+            DateTime cutoffTime = null;
+            if (stashTimeInfoMap.size() > 0) {
+                cutoffTime = new DateTime(stashTimeInfoMap.entrySet().stream()
+                        .min((entry1, entry2) -> entry1.getValue().getTimestamp() > entry2.getValue().getTimestamp() ? 1 : -1)
+                        .get()
+                        .getValue()
+                        .getTimestamp());
+            }
 
             Iterator<MultiTableScanResult> allResults = _dataTools.multiTableScan(multiTableScanOptions, tableSet, LimitCounter.max(), ReadConsistency.STRONG, cutoffTime);
 

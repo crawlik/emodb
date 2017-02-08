@@ -28,6 +28,7 @@ import com.bazaarvoice.emodb.web.cli.ListCassandraCommand;
 import com.bazaarvoice.emodb.web.cli.PurgeDatabusEventsCommand;
 import com.bazaarvoice.emodb.web.cli.RegisterCassandraCommand;
 import com.bazaarvoice.emodb.web.cli.UnregisterCassandraCommand;
+import com.bazaarvoice.emodb.sor.compactioncontrol.LocalCompactionControl;
 import com.bazaarvoice.emodb.web.ddl.CreateKeyspacesCommand;
 import com.bazaarvoice.emodb.web.ddl.DdlConfiguration;
 import com.bazaarvoice.emodb.web.jersey.ExceptionMappers;
@@ -227,7 +228,8 @@ public class EmoService extends Application<EmoConfiguration> {
         DataStore dataStore = _injector.getInstance(DataStore.class);
         ResourceRegistry resources = _injector.getInstance(ResourceRegistry.class);
         DataStoreAsync dataStoreAsync = _injector.getInstance(DataStoreAsync.class);
-        CompactionControlSource compactionControlSource = _injector.getInstance(CompactionControlSource.class);
+        CompactionControlSource compactionControlSource = _injector.getInstance(Key.get(CompactionControlSource.class, LocalCompactionControl.class));
+
         // Start the System Of Record service
         resources.addResource(_cluster, "emodb-sor-1", new DataStoreResource1(dataStore, dataStoreAsync, compactionControlSource));
     }

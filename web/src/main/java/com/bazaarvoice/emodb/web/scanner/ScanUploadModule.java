@@ -26,10 +26,10 @@ import com.bazaarvoice.emodb.queue.api.QueueService;
 import com.bazaarvoice.emodb.queue.client.QueueClientFactory;
 import com.bazaarvoice.emodb.queue.client.QueueServiceAuthenticator;
 import com.bazaarvoice.emodb.sor.DataStoreConfiguration;
+import com.bazaarvoice.emodb.sor.api.CompactionControlSource;
 import com.bazaarvoice.emodb.sor.api.DataStore;
 import com.bazaarvoice.emodb.web.EmoConfiguration;
 import com.bazaarvoice.emodb.web.auth.ApiKeyEncryption;
-import com.bazaarvoice.emodb.web.compactioncontrol.DefaultCompactionControlManager;
 import com.bazaarvoice.emodb.web.scanner.config.ScannerConfiguration;
 import com.bazaarvoice.emodb.web.scanner.config.ScheduledScanConfiguration;
 import com.bazaarvoice.emodb.web.scanner.control.DistributedScanRangeMonitor;
@@ -102,6 +102,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * <li> {@link DataCenters}
  * <li> {@link MetricRegistry}
  * <li> Jersey {@link Client}
+ * <li> {@link CompactionControlSource}
  * </ul>
  * Exports the following:
  * <li> {@link ScanUploader}
@@ -164,8 +165,6 @@ public class ScanUploadModule extends PrivateModule {
         bind(AWSCredentialsProvider.class).toInstance(new DefaultAWSCredentialsProviderChain());
 
         expose(ScanUploader.class);
-
-        bind(DefaultCompactionControlManager.class).asEagerSingleton();
     }
 
     @Provides

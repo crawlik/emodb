@@ -7,7 +7,7 @@ import java.util.Iterator;
 
 public interface Compactor {
 
-    Expanded expand(Record record, long fullConsistencyTimestamp, long compactionConsistencyTimeStamp, long deleteDeltasTimestamp, MutableIntrinsics intrinsics, boolean ignoreRecent,
+    Expanded expand(Record record, long fullConsistencyTimestamp, long compactionConsistencyTimeStamp, long compactionControlTimestamp, MutableIntrinsics intrinsics, boolean ignoreRecent,
                     Supplier<Record> requeryFn);
 
     Iterator<DataAudit> getAuditedContent(PendingCompaction pendingCompaction,

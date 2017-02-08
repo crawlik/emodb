@@ -49,6 +49,7 @@ public enum EmoServiceMode {
             Aspect.throttle,
             Aspect.report,
             Aspect.compaction_control,
+            Aspect.compaction_control_web,
             Aspect.job,
             Aspect.security,
             Aspect.full_consistency,
@@ -91,9 +92,11 @@ public enum EmoServiceMode {
             Aspect.cache,
             Aspect.leader_control,
             Aspect.dataCenter,
+            Aspect.dataCenter_announce,
             Aspect.dataStore_module,
             Aspect.blobStore_module, // needed for permission resolver
             Aspect.scanner,
+            Aspect.compaction_control,
             Aspect.security,
             Aspect.full_consistency
     );
@@ -153,6 +156,7 @@ public enum EmoServiceMode {
         throttle,
         report,
         compaction_control,
+        compaction_control_web,
         job,
         full_consistency, // This wires in the fct global zookeeper location
         security,
